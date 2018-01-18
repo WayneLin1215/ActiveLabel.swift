@@ -60,6 +60,9 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     @IBInspectable public var highlightFontName: String? = nil {
         didSet { updateTextStorage(parseText: false) }
     }
+    @IBInspectable public var highlightBackgroundColor: UIColor = .lightGray {
+        didSet { updateTextStorage(parseText: false) }
+    }
     public var highlightFontSize: CGFloat? = nil {
         didSet { updateTextStorage(parseText: false) }
     }
@@ -403,6 +406,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
                 selectedColor = possibleSelectedColor ?? defaultCustomColor
             }
             attributes[NSAttributedStringKey.foregroundColor] = selectedColor
+            attributes[NSAttributedStringKey.backgroundColor] = highlightBackgroundColor
         } else {
             let unselectedColor: UIColor
             switch type {
@@ -412,6 +416,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .custom: unselectedColor = customColor[selectedElement.type] ?? defaultCustomColor
             }
             attributes[NSAttributedStringKey.foregroundColor] = unselectedColor
+            attributes[NSAttributedStringKey.backgroundColor] = UIColor.clear
         }
         
         if let highlightFont = hightlightFont {
