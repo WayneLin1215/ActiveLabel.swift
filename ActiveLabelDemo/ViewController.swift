@@ -15,14 +15,19 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        label.frame = CGRect(x: 20, y: 40, width: view.frame.width - 40, height: 300)
+        view.addSubview(label)
 
         let customType = ActiveType.custom(pattern: "\\sare\\b") //Looks for "are"
         let customType2 = ActiveType.custom(pattern: "\\sit\\b") //Looks for "it"
         let customType3 = ActiveType.custom(pattern: "\\ssupports\\b") //Looks for "supports"
+        let customType4 = ActiveType.custom(pattern: "\\s......繼續閱讀\\b")
 
         label.enabledTypes.append(customType)
         label.enabledTypes.append(customType2)
         label.enabledTypes.append(customType3)
+        label.enabledTypes.append(customType4)
 
         label.urlMaximumLength = 31
 
@@ -30,7 +35,8 @@ class ViewController: UIViewController {
             label.text = "This is a post with #multiple #hashtags and a @userhandle. Links are also supported like" +
             " this one: http://optonaut.co. Now it also supports custom patterns -> are\n\n" +
                 "Let's trim a long link: \nhttps://twitter.com/twicket_app/status/649678392372121601"
-            label.numberOfLines = 0
+            label.numberOfLines = 7
+            label.readMoreText = NSAttributedString(string: "......繼續閱讀")
             label.lineSpacing = 4
             
             label.textColor = UIColor(red: 102.0/255, green: 117.0/255, blue: 127.0/255, alpha: 1)
@@ -65,9 +71,6 @@ class ViewController: UIViewController {
             label.handleCustomTap(for: customType2) { self.alert("Custom type", message: $0) }
             label.handleCustomTap(for: customType3) { self.alert("Custom type", message: $0) }
         }
-
-        label.frame = CGRect(x: 20, y: 40, width: view.frame.width - 40, height: 300)
-        view.addSubview(label)
         
         
         // Do any additional setup after loading the view, typically from a nib.

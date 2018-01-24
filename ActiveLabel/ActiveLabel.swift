@@ -14,6 +14,7 @@ public protocol ActiveLabelDelegate: class {
 }
 
 public typealias ConfigureLinkAttribute = (ActiveType, [NSAttributedStringKey : Any], Bool) -> ([NSAttributedStringKey : Any])
+typealias LineIndexTuple = (line: CTLine, index: Int)
 typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveType)
 
 @IBDesignable open class ActiveLabel: UILabel {
@@ -140,6 +141,10 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
 
     open override var lineBreakMode: NSLineBreakMode {
         didSet { textContainer.lineBreakMode = lineBreakMode }
+    }
+    
+    open var readMoreText: NSAttributedString? {
+        didSet { updateTextStorage() }
     }
 
     // MARK: - init functions
@@ -341,6 +346,32 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     /// use regex check all link ranges
     fileprivate func parseTextAndExtractActiveElements(_ attrString: NSAttributedString) -> String {
         var textString = attrString.string
+        
+        if let readMoreText = readMoreText {
+            let lines = attrString.lines(for: frame.size.width)
+            if numberOfLines > 0 && numberOfLines < lines.count {
+                let lastLineRef = lines[numberOfLines-1] as CTLine
+                var lineIndex: LineIndexTuple?
+                var modifiedLastLineText: NSAttributedString?
+                
+                
+                lineIndex = findLineWithWords(lastLine: lastLineRef, text: attrString, lines: lines)
+                if let lineIndex = lineIndex {
+                    modifiedLastLineText = textReplaceWordWithLink(lineIndex, text: attrString, linkName: readMoreText)
+                }
+                
+                
+                if let lineIndex = lineIndex, let modifiedLastLineText = modifiedLastLineText {
+                    let collapsedLines = NSMutableAttributedString()
+                    for index in 0..<lineIndex.index {
+                        collapsedLines.append(attrString.text(for:lines[index]))
+                    }
+                    collapsedLines.append(modifiedLastLineText)
+                    textString = collapsedLines.string
+                }
+            }
+        }
+        
         var textLength = textString.utf16.count
         var textRange = NSRange(location: 0, length: textLength)
 
@@ -368,6 +399,49 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
         return textString
     }
 
+    fileprivate func findLineWithWords(lastLine: CTLine, text: NSAttributedString, lines: [CTLine]) -> LineIndexTuple {
+        var lastLineRef = lastLine
+        var lastLineIndex = numberOfLines - 1
+        var lineWords = spiltIntoWords(str: text.text(for: lastLineRef).string as NSString)
+        while lineWords.count < 2 && lastLineIndex > 0 {
+            lastLineIndex -=  1
+            lastLineRef = lines[lastLineIndex] as CTLine
+            lineWords = spiltIntoWords(str: text.text(for: lastLineRef).string as NSString)
+        }
+        return (lastLineRef, lastLineIndex)
+    }
+    
+    fileprivate func spiltIntoWords(str: NSString) -> [String] {
+        var strings: [String] = []
+        str.enumerateSubstrings(in: NSRange(location: 0, length: str.length), options: [.byWords, .reverse]) { (word, subRange, enclosingRange, stop) -> Void in
+            if let unwrappedWord = word {
+                strings.append(unwrappedWord)
+            }
+            if strings.count > 1 { stop.pointee = true }
+        }
+        return strings
+    }
+    
+    fileprivate func textReplaceWordWithLink(_ lineIndex: LineIndexTuple, text: NSAttributedString, linkName: NSAttributedString) -> NSAttributedString {
+        let lineText = text.text(for: lineIndex.line)
+        var lineTextWithLink = lineText
+        (lineText.string as NSString).enumerateSubstrings(in: NSRange(location: 0, length: lineText.length), options: [.byWords, .reverse]) { (word, subRange, enclosingRange, stop) -> Void in
+            let lineTextWithLastWordRemoved = lineText.attributedSubstring(from: NSRange(location: 0, length: subRange.location))
+            let lineTextWithAddedLink = NSMutableAttributedString(attributedString: lineTextWithLastWordRemoved)
+            lineTextWithAddedLink.append(NSAttributedString(string: " ", attributes: [.font: self.font]))
+            lineTextWithAddedLink.append(linkName)
+            let fits = self.textFitsWidth(lineTextWithAddedLink)
+            if fits {
+                lineTextWithLink = lineTextWithAddedLink
+                stop.pointee = true
+            }
+        }
+        return lineTextWithLink
+    }
+    
+    fileprivate func textFitsWidth(_ text: NSAttributedString) -> Bool {
+        return (text.boundingRect(for: frame.size.width).size.height <= font.lineHeight) as Bool
+    }
 
     /// add line break mode
     fileprivate func addLineBreak(_ attrString: NSAttributedString) -> NSMutableAttributedString {
