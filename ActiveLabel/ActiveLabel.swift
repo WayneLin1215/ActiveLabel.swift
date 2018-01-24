@@ -192,6 +192,9 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
         let superSize = super.intrinsicContentSize
         textContainer.size = CGSize(width: superSize.width, height: CGFloat.greatestFiniteMagnitude)
         let size = layoutManager.usedRect(for: textContainer)
+        if let text = text, text.isEmpty {
+            return CGSize(width: ceil(size.width), height: 0)
+        }
         return CGSize(width: ceil(size.width), height: ceil(size.height))
     }
 
