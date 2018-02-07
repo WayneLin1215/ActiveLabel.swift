@@ -486,6 +486,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             }
             attributes[NSAttributedStringKey.foregroundColor] = selectedColor
             attributes[NSAttributedStringKey.backgroundColor] = highlightBackgroundColor
+            attributes[NSAttributedStringKey.font] = UIFont.systemFont(ofSize: 13)
         } else {
             let unselectedColor: UIColor
             switch type {
