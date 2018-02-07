@@ -329,7 +329,9 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .mention: attributes[NSAttributedStringKey.foregroundColor] = mentionColor
             case .hashtag: attributes[NSAttributedStringKey.foregroundColor] = hashtagColor
             case .url: attributes[NSAttributedStringKey.foregroundColor] = URLColor
-            case .custom: attributes[NSAttributedStringKey.foregroundColor] = customColor[type] ?? defaultCustomColor
+            case .custom:
+                attributes[NSAttributedStringKey.foregroundColor] = customColor[type] ?? defaultCustomColor
+                attributes[NSAttributedStringKey.font] = UIFont.systemFont(ofSize: 13)
             }
             
             if let highlightFont = hightlightFont {
@@ -443,7 +445,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     fileprivate func textFitsWidth(_ text: NSAttributedString) -> Bool {
-        return (text.boundingRect(for: frame.size.width).size.height <= font.lineHeight) as Bool
+        return (text.boundingRect(for: frame.size.width - 20).size.height <= font.lineHeight) as Bool
     }
 
     /// add line break mode
