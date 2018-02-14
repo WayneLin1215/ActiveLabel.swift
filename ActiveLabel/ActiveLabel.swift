@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 
 public protocol ActiveLabelDelegate: class {
-    func didSelect(_ text: String, type: ActiveType)
+    func didSelect(_ text: String, type: ActiveType, range: NSRange)
 }
 
 public typealias ConfigureLinkAttribute = (ActiveType, [NSAttributedStringKey : Any], Bool) -> ([NSAttributedStringKey : Any])
@@ -87,11 +87,11 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     // MARK: - public methods
-    open func handleMentionTap(_ handler: @escaping (String) -> ()) {
+    open func handleMentionTap(_ handler: @escaping (String, NSRange) -> ()) {
         mentionTapHandler = handler
     }
     
-    open func handleHashtagTap(_ handler: @escaping (String) -> ()) {
+    open func handleHashtagTap(_ handler: @escaping (String, NSRange) -> ()) {
         hashtagTapHandler = handler
     }
     
@@ -232,10 +232,10 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             guard let selectedElement = selectedElement else { return avoidSuperCall }
             
             switch selectedElement.element {
-            case .mention(let userHandle): didTapMention(userHandle)
-            case .hashtag(let hashtag): didTapHashtag(hashtag)
-            case .url(let originalURL, _): didTapStringURL(originalURL)
-            case .custom(let element): didTap(element, for: selectedElement.type)
+            case .mention(let userHandle): didTapMention(userHandle, range: selectedElement.range)
+            case .hashtag(let hashtag): didTapHashtag(hashtag, range: selectedElement.range)
+            case .url(let originalURL, _): didTapStringURL(originalURL, range: selectedElement.range)
+            case .custom(let element): didTap(element, for: selectedElement.type, range: selectedElement.range)
             }
             
             let when = DispatchTime.now() + Double(Int64(0.25 * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC)
@@ -258,8 +258,8 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     fileprivate var _customizing: Bool = true
     fileprivate var defaultCustomColor: UIColor = .black
     
-    internal var mentionTapHandler: ((String) -> ())?
-    internal var hashtagTapHandler: ((String) -> ())?
+    internal var mentionTapHandler: ((String, NSRange) -> ())?
+    internal var hashtagTapHandler: ((String, NSRange) -> ())?
     internal var urlTapHandler: ((URL) -> ())?
     internal var customTapHandlers: [ActiveType : ((String) -> ())] = [:]
     
@@ -336,10 +336,6 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
         attributes[NSAttributedStringKey.foregroundColor] = mentionColor
         
         for (type, elements) in activeElements {
-            attributes[NSAttributedStringKey.backgroundColor] = UIColor.clear
-            if let selectElement = selectElement, selectElement.type == type {
-                attributes[NSAttributedStringKey.backgroundColor] = isSelected ? highlightBackgroundColor : UIColor.clear
-            }
             
             switch type {
             case .mention: attributes[NSAttributedStringKey.foregroundColor] = mentionColor
@@ -367,6 +363,10 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             }
             
             for element in elements {
+                attributes[NSAttributedStringKey.backgroundColor] = UIColor.clear
+                if let selectElement = selectElement, selectElement.type == element.type, selectElement.range == element.range {
+                    attributes[NSAttributedStringKey.backgroundColor] = isSelected ? highlightBackgroundColor : UIColor.clear
+                }
                 mutAttrString.setAttributes(attributes, range: element.range)
             }
         }
@@ -516,7 +516,6 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
                 }
             }
             attributes[NSAttributedStringKey.foregroundColor] = selectedColor
-            attributes[NSAttributedStringKey.backgroundColor] = highlightBackgroundColor
         } else {
             let unselectedColor: UIColor
             switch type {
@@ -534,7 +533,6 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
                 }
             }
             attributes[NSAttributedStringKey.foregroundColor] = unselectedColor
-            attributes[NSAttributedStringKey.backgroundColor] = UIColor.clear
         }
         
         if let highlightFont = hightlightFont {
@@ -544,7 +542,6 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
         if let configureLinkAttribute = configureLinkAttribute {
             attributes = configureLinkAttribute(type, attributes, isSelected)
         }
-        
         textStorage.addAttributes(attributes, range: selectedElement.range)
         addLinkAttribute(textStorage, isSelected: isSelected, selectElement: selectedElement)
         setNeedsDisplay()
@@ -600,33 +597,33 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     //MARK: - ActiveLabel handler
-    fileprivate func didTapMention(_ username: String) {
+    fileprivate func didTapMention(_ username: String, range: NSRange) {
         guard let mentionHandler = mentionTapHandler else {
-            delegate?.didSelect(username, type: .mention)
+            delegate?.didSelect(username, type: .mention, range: range)
             return
         }
-        mentionHandler(username)
+        mentionHandler(username, range)
     }
     
-    fileprivate func didTapHashtag(_ hashtag: String) {
+    fileprivate func didTapHashtag(_ hashtag: String, range: NSRange) {
         guard let hashtagHandler = hashtagTapHandler else {
-            delegate?.didSelect(hashtag, type: .hashtag)
+            delegate?.didSelect(hashtag, type: .hashtag, range: range)
             return
         }
-        hashtagHandler(hashtag)
+        hashtagHandler(hashtag, range)
     }
     
-    fileprivate func didTapStringURL(_ stringURL: String) {
+    fileprivate func didTapStringURL(_ stringURL: String, range: NSRange) {
         guard let urlHandler = urlTapHandler, let url = URL(string: stringURL) else {
-            delegate?.didSelect(stringURL, type: .url)
+            delegate?.didSelect(stringURL, type: .url, range: range)
             return
         }
         urlHandler(url)
     }
     
-    fileprivate func didTap(_ element: String, for type: ActiveType) {
+    fileprivate func didTap(_ element: String, for type: ActiveType, range: NSRange) {
         guard let elementHandler = customTapHandlers[type] else {
-            delegate?.didSelect(element, type: type)
+            delegate?.didSelect(element, type: type, range: range)
             return
         }
         elementHandler(element)
@@ -647,4 +644,3 @@ extension ActiveLabel: UIGestureRecognizerDelegate {
         return true
     }
 }
-
